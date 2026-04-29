@@ -1,0 +1,43 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+
+# IDEs
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+# --- Eclipse ---
+.metadata/
+.metadata/plugins/
+.metadata/tmp/
+.vscode/
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.springBeans
+.factorypath
+externalToolBuilders/
+*.launch
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Credenciais
+.env
+# --- Outros ---
+.DS_Store
+*.log
