@@ -9,7 +9,6 @@ package com.gwj;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -24,10 +23,10 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-@WebServlet("/read-json") // Esta será a URL: http://localhost:9090/read-json?entity=[nome da classe em domain/entities/]
-public class Read extends HttpServlet {
+@WebServlet("/create-json") // Esta será a URL: http://localhost:9080/create-json?entity=[nome da classe em domain/entities/]
+public class Create extends HttpServlet {
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         // ESTA LINHA É OBRIGATÓRIA para transformar LocalDateTime em JSON:
         ObjectMapper mapper = new ObjectMapper();
@@ -39,28 +38,34 @@ public class Read extends HttpServlet {
         if (entityName != null && !entityName.trim().isEmpty()) { // Verifica se o parâmetro existe e tem conteúdo (não é só espaço em branco).
             IEntity entidade = SimpleObjectFactory.create(entityName);
             DataAccessObject dataAccessObject = new DataAccessObject();
-            List<IEntity> listaEntity = dataAccessObject.read(EntityMapper.fillEntity(entidade, request));
-            System.out.println("Read: Retornou de dataAccessObject.read");
+            // Preenche a entidade com os dados da requisição (request) e envia para o DAO persistir a entidade no banco de dados.
+            Long primaryKey = dataAccessObject.create(EntityMapper.fillEntity(entidade, request)); //
+            System.out.println("Create: Retornou de dataAccessObject.create");
+            System.out.println("Create: Long = " + primaryKey);
+            /*
+            if(primaryKey > 0){ // Se há chave primária, significa que a entidade persistiu no banco de dados.
+                entidade.setId(primaryKey);
+                List<IEntity> listaEntity = dataAccessObject.read(entidade);
+                // 2. Configurar a resposta para página JSON
+                response.setContentType("application/json");
+                response.setCharacterEncoding("UTF-8");
 
-            // 2. Configurar a resposta para página JSON
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
+                // 3. Converter a lista para JSON usando Jackson
+                String jsonResposta = mapper.writeValueAsString(listaEntity);
 
-            // 3. Converter a lista para JSON usando Jackson
-            String jsonResposta = mapper.writeValueAsString(listaEntity);
-
-            // 4. Escrever a resposta
-            PrintWriter out = response.getWriter();
-            out.print(jsonResposta);
-            out.flush();
-            
+                // 4. Escrever a resposta
+                PrintWriter out = response.getWriter();
+                out.print(jsonResposta);
+                out.flush();
+            }
+            */
         } else { // Caso o Read retornar vazio (nome de uma classe que não existe, ou nenhuma entidade encontrada pelo critério de pesquisa):
             // O parâmetro não foi enviado na URL ou está vazio
             // Define o tipo de conteúdo como HTML
             response.setContentType("text/html");
             PrintWriter out = response.getWriter();
             // Imprime resposta no navegador
-            out.println("<h1>Nenhum valor recebido!</h1>");
+            out.println("<h1>Nenhuma chave primária recebida!</h1>");
         }
         
     }

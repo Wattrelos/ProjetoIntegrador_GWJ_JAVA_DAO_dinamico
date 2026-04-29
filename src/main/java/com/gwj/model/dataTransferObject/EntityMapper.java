@@ -1,9 +1,11 @@
 package com.gwj.model.dataTransferObject;
 
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -53,14 +55,17 @@ public class EntityMapper {
      */
     private static Object convertValue(String value, Class<?> targetType) {
         if (value == null) return null;
-
-        return switch (targetType) {
-            case Class<?> t when t == String.class -> value;
-            case Class<?> t when t == int.class || t == Integer.class -> Integer.parseInt(value);
-            case Class<?> t when t == long.class || t == Long.class -> Long.parseLong(value);
-            case Class<?> t when t == boolean.class || t == Boolean.class -> Boolean.parseBoolean(value);
-            case Class<?> t when t == LocalDateTime.class -> LocalDateTime.parse(value, DATE_FORMATTER);
-            default -> null;
+            return switch (targetType) {
+                case Class<?> t when t == String.class -> value;
+                case Class<?> t when t == int.class || t == Integer.class -> Integer.parseInt(value);
+                case Class<?> t when t == long.class || t == Long.class -> Long.parseLong(value);
+                case Class<?> t when t == double.class || t == Double.class -> Double.parseDouble(value);
+                case Class<?> t when t == float.class || t == Float.class -> Float.parseFloat(value);
+                case Class<?> t when t == boolean.class || t == Boolean.class -> Boolean.parseBoolean(value);
+                case Class<?> t when t == BigDecimal.class -> new java.math.BigDecimal(value);
+                case Class<?> t when t == LocalDateTime.class -> LocalDateTime.parse(value, DATE_FORMATTER);
+                case Class<?> t when t == LocalDate.class -> LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
+                default -> null;
         };
     }
 }

@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -16,6 +17,130 @@ import com.gwj.AppConfig;
 import com.gwj.model.domain.IEntity;
 
 public class DataAccessObject {
+
+
+    // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    // Método create, início.
+    /*
+    * O que mudou e por quê?
+    * method.getDeclaringClass() != clazz: Se o objeto for um Cliente, mas o método getNome() estiver declarado em Usuario, ele será ignorado neste INSERT. Assim, cada tabela recebe apenas seus respectivos campos.
+    * setObject vs String.valueOf: No banco, uma coluna INT ou DATE pode rejeitar uma String. O setObject deixa o driver do JDBC decidir a melhor conversão.
+    * executeUpdate(): Essencial para operações que modificam dados (INSERT, UPDATE, DELETE).
+    * RETURN_GENERATED_KEYS: Sem isso, o banco não devolve o ID auto-incrementado para o seu return 1L.
+    * Dica de Arquitetura: Como as tabelas estão separadas para Usuario e Cliente, você precisará chamar esse método create duas vezes (uma para a classe pai e outra para a filha) ou implementar uma lógica que percorra a hierarquia de classes e execute os inserts na ordem correta (pai primeiro para gerar o ID).
+    * Para fechar com chave de ouro e garantir que seu sistema seja robusto, aqui está como aplicar o Controle de Transação. Isso evita que o "Pai" seja gravado se o "Filho" der erro:
+    */
+    
+    public Long create(IEntity entity) {
+        List<Class<?>> hierarchy = getEntityHierarchy(entity.getClass());
+        Long lastId = null;
+        
+        // 1. Pegamos a conexão singleton
+        Connection conn = ConnectionDB.getInstance().getConnection();
+
+        try {
+            // 2. DESATIVAR o Auto-Commit (Inicia a transação)
+            conn.setAutoCommit(false);
+
+            for (Class<?> clazz : hierarchy) {
+                // Passamos a conexão para o método de insert usar a MESMA
+                lastId = insertForClass(conn, entity, clazz, lastId);
+            }
+
+            // 3. Se chegou aqui sem erro, confirma tudo no banco
+            conn.commit();
+            System.out.println("Transação concluída com sucesso!");
+
+        } catch (Exception e) {
+            try {
+                // 4. Se algo deu errado (Ex: erro no Cliente), desfaz o Usuario
+                conn.rollback();
+                System.err.println("Erro na transação. Rollback executado: " + e.getMessage());
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        } finally {
+            try {
+                // 5. SEMPRE reativar o auto-commit para não afetar outras consultas
+                conn.setAutoCommit(true);
+            } catch (SQLException e) { e.printStackTrace(); }
+        }
+        
+        return lastId;
+    }
+
+
+    private Long insertForClass(Connection conn, IEntity entity, Class<?> clazz, Long parentId) {
+        ArrayList<String> columns = new ArrayList<>();
+        ArrayList<Object> values = new ArrayList<>();
+        ArrayList<String> placeholders = new ArrayList<>();
+
+        // Se houver um ID do pai, ele deve ser incluído como FK se a tabela filha exigir
+        // Aqui assumimos que o ID da filha é o mesmo ID da pai (comum em TABLE_PER_CLASS ou JOINED)
+        if (parentId != null) {
+            columns.add("id"); // ou o nome da sua FK
+            placeholders.add("?");
+            values.add(parentId);
+        }
+
+        Method[] methods = clazz.getDeclaredMethods(); // Pega apenas os métodos desta classe específica
+
+        for (Method method : methods) {
+            if (method.getName().startsWith("get") && !method.getName().equals("getClass") && method.getParameterCount() == 0) {
+                if (!Collection.class.isAssignableFrom(method.getReturnType())) {
+                    try {
+                        // Ignoramos o getId pois ele será inserido via parentId ou gerado pelo banco no primeiro insert
+                        if (method.getName().equalsIgnoreCase("getId")) continue;
+
+                        Object value = method.invoke(entity);
+                        columns.add(convertPascalCaseToSnakeCase(method.getName().substring(3)));
+                        placeholders.add("?");
+                        values.add(value);
+                    } catch (Exception e) { e.printStackTrace(); }
+                }
+            }
+        }
+
+        String sql = "INSERT INTO " + AppConfig.TABLE_PREFIX + clazz.getSimpleName().toLowerCase() 
+                + " (" + String.join(", ", columns) + ") VALUES (" + String.join(", ", placeholders) + ")";
+
+        // 1. Obtenha a conexão SEM o try-with-resources
+        // Connection conn = ConnectionDB.getInstance().getConnection();
+    
+        // 2. Use o try-with-resources APENAS para o Statement e ResultSet
+
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            
+            for (int i = 0; i < values.size(); i++) {
+                pstmt.setObject(i + 1, values.get(i));
+            }
+            pstmt.executeUpdate();
+            try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        } catch (Exception e) {
+            System.err.println("Erro na tabela " + clazz.getSimpleName() + ": " + e.getMessage());
+        }
+        // NOTA: Não fechamos 'conn' aqui para que o Singleton continue disponível
+        return parentId; // Retorna o ID atual para a próxima iteração
+    }
+
+    private List<Class<?>> getEntityHierarchy(Class<?> startClass) {
+        List<Class<?>> hierarchy = new ArrayList<>();
+        Class<?> current = startClass;
+        
+        // Sobe na hierarquia enquanto a classe implementar IEntity
+        while (current != null && IEntity.class.isAssignableFrom(current) && current != Object.class) {
+            hierarchy.add(0, current); // Adiciona no início para o pai ficar na posição 0
+            current = current.getSuperclass();
+        }
+        return hierarchy;
+    }
+    // Método create, fim.
+    // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 
     public List<IEntity> read(IEntity entity) {
         List<IEntity> listEntity = new ArrayList<>();
