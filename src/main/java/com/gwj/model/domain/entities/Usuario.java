@@ -19,7 +19,7 @@ public class Usuario implements IEntity{
 	protected Long          grupoUsuarioId;
 	protected String        nomeUsuario;
 	protected String        email;
-	protected boolean       status;
+	protected Boolean       status;
 	protected String        senha;
 	protected String        token;
 	protected String        ip;
@@ -51,10 +51,10 @@ public class Usuario implements IEntity{
 	public void setEmail(String email) {
 		this.email = email;
 	}
-	public boolean getStatus() {
+	public Boolean getStatus() {
 		return status;
 	}
-	public void setStatus(boolean status) {
+	public void setStatus(Boolean status) {
 		this.status = status;
 	}
 	public String getSenha() {

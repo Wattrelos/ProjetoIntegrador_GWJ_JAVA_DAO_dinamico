@@ -16,10 +16,11 @@ public class Agenda implements IEntity{
     protected String nome;
 	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") // Avisa ao módulo json utilizar este formato.
     protected LocalDateTime data;
+	
     // Atributos complexos:
     protected Profissional proficional;
     protected Cliente cliente;
-    private List<Servico> listaServico = new ArrayList<>(); // Declaração da lista de Serviços.
+    private   List<Servico> listaServico = new ArrayList<>(); // Declaração da lista de Serviços.
 	
 	
 	// Métodos

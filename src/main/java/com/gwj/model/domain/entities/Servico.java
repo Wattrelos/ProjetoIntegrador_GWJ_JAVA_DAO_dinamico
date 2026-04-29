@@ -16,7 +16,7 @@ public class Servico implements IEntity{
     protected BigDecimal  preco;
     protected int         duracao;
     protected String      tipo;
-    protected boolean     ativo;
+    protected Boolean     ativo;
     
 	public Servico() {
 		super();
@@ -57,10 +57,10 @@ public class Servico implements IEntity{
 	public void setTipo(String tipo) {
 		this.tipo = tipo;
 	}
-	public boolean getAtivo() {
+	public Boolean getAtivo() {
 		return ativo;
 	}
-	public void setAtivo(boolean ativo) {
+	public void setAtivo(Boolean ativo) {
 		this.ativo = ativo;
 	}
 

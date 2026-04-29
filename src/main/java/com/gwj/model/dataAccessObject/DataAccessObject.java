@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import com.gwj.AppConfig;
@@ -453,4 +454,139 @@ public class DataAccessObject {
             }
         }
     }
+    // Método read, fim.
+    // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    // Método update, início.
+
+    /*
+    * A lógica é muito similar à do create, inclusive na necessidade de percorrer a hierarquia de tabelas. A principal diferença é a montagem da cláusula SET do SQL, que deve ser dinâmica para incluir apenas o que foi preenchido.
+    * Aqui está a implementação do update, focada em ser "parcial" (ignora nulos e vazios):
+    * O que essa implementação faz de especial:
+    *     Atualização Seletiva: O if (value != null && !value.toString().trim().isEmpty()) garante que, se você enviar um objeto Cliente apenas com o nome preenchido, o cpf atual no banco não será sobrescrito por nulo.
+    *     Independência de Tabelas: O getDeclaredMethods() garante que a query da tabela usuario só contenha campos de usuário, e a de cliente apenas campos de cliente.
+    *     Segurança: O uso de setObject protege contra SQL Injection e lida com diferentes tipos de dados.
+    */
+    public Long update(IEntity entity) {
+        if (entity.getId() == null || entity.getId() <= 0) {
+            throw new RuntimeException("ID inválido para atualização.");
+        }
+
+        List<Class<?>> hierarchy = getEntityHierarchy(entity.getClass());
+        Connection conn = ConnectionDB.getInstance().getConnection();
+
+        try {
+            conn.setAutoCommit(false);
+
+            for (Class<?> clazz : hierarchy) {
+                updateForClass(conn, entity, clazz);
+            }
+
+            conn.commit();
+            return entity.getId();
+        } catch (Exception e) {
+            try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            System.err.println("Erro no update: " + e.getMessage());
+            return null;
+        } finally {
+            try { conn.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    private void updateForClass(Connection conn, IEntity entity, Class<?> clazz) throws Exception {
+        ArrayList<String> setClauses = new ArrayList<>();
+        ArrayList<Object> values = new ArrayList<>();
+
+        // getDeclaredMethods() para garantir que cada tabela só atualize suas colunas
+        Method[] methods = clazz.getDeclaredMethods();
+
+        for (Method method : methods) {
+            if (method.getName().startsWith("get") && !method.getName().equals("getClass") && method.getParameterCount() == 0) {
+                
+                // Ignoramos coleções e o próprio ID (ID vai no WHERE)
+                if (!Collection.class.isAssignableFrom(method.getReturnType()) && !method.getName().equalsIgnoreCase("getId")) {
+                    
+                    Object value = method.invoke(entity);
+
+                    /*
+                    // FILTRO: Só adiciona ao SQL se NÃO for nulo e NÃO for String vazia
+                    if (value != null && !value.toString().trim().isEmpty()) {
+                        String colName = convertPascalCaseToSnakeCase(method.getName().substring(3));
+                        setClauses.add(colName + " = ?");
+                        values.add(value);
+                    }
+                    */
+                    // Dentro do loop de métodos no seu update:
+                    // FILTRO REFINADO:
+                    // Se for null, ignoramos (presume-se que não foi alterado no formulário)
+                    if (value != null) {
+                        String colName = convertPascalCaseToSnakeCase(method.getName().substring(3));
+                        
+                        // Se for uma String vazia "", ela VAI para o SET para limpar o campo no banco
+                        setClauses.add(colName + " = ?");
+                        values.add(value);
+                    }
+                }
+            }
+        }
+
+        // Se não houver nada para atualizar nesta classe específica, pula para a próxima
+        if (setClauses.isEmpty()) return;
+
+        String sql = "UPDATE " + AppConfig.TABLE_PREFIX + clazz.getSimpleName().toLowerCase() +
+                    " SET " + String.join(", ", setClauses) + " WHERE id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            int i = 1;
+            for (Object val : values) {
+                pstmt.setObject(i++, val);
+            }
+            pstmt.setLong(i, entity.getId()); // O ID é sempre o último parâmetro
+            pstmt.executeUpdate();
+        }
+    }
+    // Método update, fim.
+    // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    // Método delete, início.
+    public Long delete(IEntity entity) {
+        if (entity.getId() == null || entity.getId() <= 0) {
+            throw new RuntimeException("ID inválido para exclusão.");
+        }
+
+        // 1. Obtém a hierarquia (Pai -> Filho) e inverte (Filho -> Pai)
+        List<Class<?>> hierarchy = getEntityHierarchy(entity.getClass());
+        Collections.reverse(hierarchy); 
+
+        Connection conn = ConnectionDB.getInstance().getConnection();
+        
+        try {
+            conn.setAutoCommit(false); // Inicia transação
+
+            for (Class<?> clazz : hierarchy) {
+                String tableName = AppConfig.TABLE_PREFIX + clazz.getSimpleName().toLowerCase();
+                String sql = "DELETE FROM " + tableName + " WHERE id = ?";
+
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setLong(1, entity.getId());
+                    int affected = pstmt.executeUpdate();
+                    System.out.println("Deletado de " + tableName + ": " + affected + " linha(s)");
+                }
+            }
+
+            conn.commit(); // Confirma as exclusões em todas as tabelas
+            return entity.getId();
+
+        } catch (Exception e) {
+            try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            System.err.println("Erro ao deletar hierarquia: " + e.getMessage());
+            return null;
+        } finally {
+            try { conn.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    // Método delete, fim.
+    // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 }
