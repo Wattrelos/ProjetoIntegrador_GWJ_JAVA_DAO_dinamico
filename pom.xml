@@ -16,6 +16,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>    
     <maven.compiler.source>25</maven.compiler.source>
     <maven.compiler.target>25</maven.compiler.target>
   </properties>
@@ -64,6 +65,12 @@
       <artifactId>jackson-datatype-jsr310</artifactId>
       <version>2.18.2</version> <!-- Adicione esta linha -->
     </dependency>
+    <!-- Thymeleaf -->
+    <dependency>
+        <groupId>org.thymeleaf</groupId>
+        <artifactId>thymeleaf</artifactId>
+        <version>3.1.2.RELEASE</version>
+    </dependency>
 
   </dependencies>
   <dependencyManagement>
@@ -82,7 +89,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-war-plugin</artifactId>
-        <version>3.2.2</version>
+        <version>3.4.0</version>
         <dependencies>
           <!-- Força o plugin a usar a versão nova do XStream internamente -->
           <dependency>
@@ -106,6 +113,7 @@
             <properties>
               <cargo.servlet.port>9090</cargo.servlet.port>
               <cargo.plugin.reload>runtime</cargo.plugin.reload>
+              <cargo.jvmargs>--add-opens java.base/java.lang=ALL-UNNAMED</cargo.jvmargs>
             </properties>
           </configuration>
           <!-- ADICIONE ESTA PARTE AQUI EMBAIXO -->

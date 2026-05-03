@@ -4,8 +4,15 @@
 CREATE DATABASE IF NOT EXISTS `gwj2` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_uca1400_ai_ci;
 USE `gwj2`;
 
--- --------------------------------------------------------
+-- MySQL 8.0+: O comando GRANT ... IDENTIFIED BY foi removido. Primeiro você deve criar o usuário e depois dar as permissões:
+-- 1. Cria o usuário primeiro
+CREATE USER IF NOT EXISTS 'desenvolvedor'@'%' IDENTIFIED BY 'b2#FbXPQTu4FYw';
+-- 2. Garante privilégios totais apenas no banco gwj2
+GRANT ALL PRIVILEGES ON `gwj2`.* TO 'desenvolvedor'@'%';
+-- 6. Aplica as mudanças
+FLUSH PRIVILEGES;
 
+-- --------------------------------------------------------
 --
 -- Estrutura para tabela `cliente`
 --

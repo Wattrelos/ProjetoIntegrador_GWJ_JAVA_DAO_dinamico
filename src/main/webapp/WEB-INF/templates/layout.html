@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<!-- O fragmento 'main-layout' aceita um parâmetro chamado 'content' -->
+<html th:fragment="main-layout(content)" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Projeto GWJ</title>
+</head>
+<body>
+    <!-- Insere o Header -->
+    <div th:replace="~{fragments/header :: header-common}"></div>
+
+    <main>
+        <!-- Aqui será injetado o conteúdo das outras páginas -->
+        <th:block th:replace="${content}"></th:block>
+    </main>
+
+    <!-- Insere o Footer -->
+    <div th:replace="~{fragments/footer :: footer-common}"></div>
+</body>
+</html>

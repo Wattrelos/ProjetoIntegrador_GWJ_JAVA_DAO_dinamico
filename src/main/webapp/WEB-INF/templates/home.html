@@ -1,0 +1,7 @@
+<!-- Chama o layout base e passa o bloco 'content' desta página -->
+<th:block th:replace="~{layout :: main-layout(~{::section})}">
+    <section>
+        <h2 th:text="${mensagem}">Título Padrão</h2>
+        <p>Se você vê a mensagem acima, a configuração do Thymeleaf está correta!</p>
+    </section>
+</th:block>
